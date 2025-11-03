@@ -1,18 +1,18 @@
-# AWS SSO Admin Access Query Tool
+# AWS SSO Access Assignment List Builder
 
 ![AWS SSO Query Tool in Action](screenshot.png)
 
-A TypeScript script to query AWS Organizations and IAM Identity Center (AWS SSO) to identify all users and their permission set assignments across your entire organization.
+A TypeScript tool that generates a comprehensive access assignment report for your entire AWS Organization. It queries IAM Identity Center (AWS SSO) and produces a detailed CSV listing every user's permission set assignments across all accounts.
 
 ## What This Does
 
-If you've ever wondered "who has access to what in our AWS organization?", this script answers that question. It:
+This tool builds a complete access inventory for your AWS Organization. It:
 
-- Lists all AWS accounts in your organization
-- Finds all SSO permission sets (roles)
-- Maps which users have which permission sets in which accounts
-- Expands group memberships to show individual users
-- Outputs everything in CSV format for easy filtering
+- Enumerates all AWS accounts in your organization
+- Discovers all SSO permission sets configured in IAM Identity Center
+- Maps every user-to-permission-set assignment across all accounts
+- Expands group memberships to show individual user access
+- Generates a CSV file with the complete access assignment matrix
 
 ## Features
 
@@ -123,13 +123,13 @@ const OUTPUT_FILE = "sso-assignments.csv"
 
 ## Output Format
 
-CSV format with these columns:
+The tool generates a CSV file with a complete access assignment list containing these columns:
 
 ```
 Account Number, Account Name, Username, Permission Set, Group
 ```
 
-Example:
+Example output:
 
 ```
 123456789012, Production Account, john.doe, AdministratorAccess,
@@ -138,8 +138,16 @@ Example:
 234567890123, Staging Account, bob.jones, DeveloperAccess, Developers
 ```
 
-Notes:
-- The Group column shows the group name if the user received access through group membership (empty for direct assignments)
+**Column Descriptions:**
+- **Account Number**: AWS account ID
+- **Account Name**: Human-readable account name from AWS Organizations
+- **Username**: Individual user's SSO username
+- **Permission Set**: The permission set (role) assigned
+- **Group**: Group name if access was granted via group membership (empty for direct user assignments)
+
+**Notes:**
+- Each row represents one user's access to one permission set in one account
+- Group-based assignments are expanded to show individual users
 - Deleted users/groups appear as `[Deleted User: <id>]` or `[Deleted Group: <id>]`
 
 ## How It Works
@@ -215,14 +223,24 @@ This is normal - the script will automatically retry. If you see many of these:
 
 Some groups may have been deleted but still have assignments. These are silently handled and marked as `[Deleted Group: <id>]` in the output.
 
+## Use Cases
+
+This access assignment list is useful for:
+
+- **Security Audits**: Review who has access to what across your organization
+- **Compliance Reporting**: Generate access reports for auditors
+- **Access Reviews**: Identify over-privileged users or unnecessary permissions
+- **Onboarding/Offboarding**: Verify access is properly granted or revoked
+- **Organization Analysis**: Understand access patterns across accounts and teams
+
 ## Contributing
 
-Feel free to modify the script for your needs. Common modifications:
+Feel free to modify the tool for your needs. Common customizations:
 
-- Filter permission sets by name pattern
-- Output to JSON instead of CSV
-- Add email addresses (requires additional API calls)
-- Export to Excel with formatting
+- Filter by specific permission sets or accounts
+- Output to JSON or Excel format
+- Add email addresses or other user attributes
+- Include permission set policies for detailed analysis
 
 ## License
 
