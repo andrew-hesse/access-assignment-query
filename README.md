@@ -1,0 +1,229 @@
+# AWS SSO Admin Access Query Tool
+
+![AWS SSO Query Tool in Action](screenshot.png)
+
+A TypeScript script to query AWS Organizations and IAM Identity Center (AWS SSO) to identify all users and their permission set assignments across your entire organization.
+
+## What This Does
+
+If you've ever wondered "who has access to what in our AWS organization?", this script answers that question. It:
+
+- Lists all AWS accounts in your organization
+- Finds all SSO permission sets (roles)
+- Maps which users have which permission sets in which accounts
+- Expands group memberships to show individual users
+- Outputs everything in CSV format for easy filtering
+
+## Features
+
+### Performance Optimizations
+
+**Parallel Processing**: Uses controlled concurrency to process multiple accounts and permission sets simultaneously. Instead of querying accounts one-by-one, the script runs up to 10 requests in parallel (configurable).
+
+**Smart Caching**: When the same user appears in multiple accounts (which is common), we only fetch their details once and cache the result. This typically reduces API calls by 60-80%.
+
+**Rate Limit Protection**: Two-layer defense against AWS throttling:
+1. Proactive concurrency limiting prevents overwhelming the API
+2. Automatic exponential backoff with retry if rate limits are hit
+
+### Rate Limiting & Backoff
+
+If AWS starts throttling requests, the script automatically backs off:
+
+```
+Attempt 1: Wait 1 second   (1s + jitter)
+Attempt 2: Wait 2 seconds  (2s + jitter)
+Attempt 3: Wait 4 seconds  (4s + jitter)
+Attempt 4: Wait 8 seconds  (8s + jitter)
+Attempt 5: Wait 16 seconds (16s + jitter)
+```
+
+Each retry waits exponentially longer, giving AWS time to recover. Random jitter prevents multiple requests from retrying simultaneously.
+
+### Progress Tracking
+
+Real-time progress bars show:
+- Overall progress (accounts × permission sets)
+- Which account is currently being processed
+- How many assignments found so far
+- Percentage complete
+
+## Prerequisites
+
+### AWS Permissions
+
+Your credentials need these read-only permissions:
+
+```
+organizations:ListAccounts
+sso:ListInstances
+sso:ListPermissionSets
+sso:DescribePermissionSet
+sso:ListAccountAssignments
+identitystore:DescribeUser
+identitystore:DescribeGroup
+identitystore:ListGroupMemberships
+```
+
+### AWS Credentials
+
+Configure your credentials via:
+- Environment variables (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
+- AWS config file (`~/.aws/credentials`)
+- IAM role (if running on EC2/ECS)
+
+## Installation
+
+```bash
+npm install
+```
+
+## Usage
+
+### Basic Usage
+
+```bash
+npm start
+```
+
+The script will display real-time progress and write results to `sso-assignments.csv` in the current directory.
+
+### Configuration
+
+Edit the constants at the top of `query-sso-admin-access.ts`:
+
+```typescript
+// AWS Region (where your SSO instance lives)
+const AWS_REGION = "us-west-2"
+
+// Concurrency: how many parallel API requests
+const CONCURRENCY_LIMIT = 10
+
+// Retry behavior
+const MAX_RETRIES = 5
+const INITIAL_RETRY_DELAY = 1000  // milliseconds
+
+// Output file
+const OUTPUT_FILE = "sso-assignments.csv"
+```
+
+### Tuning for Your Environment
+
+**If the script is too slow:**
+- Increase `CONCURRENCY_LIMIT` to 15 or 20
+
+**If you see rate limit warnings:**
+- Decrease `CONCURRENCY_LIMIT` to 5
+- Increase `MAX_RETRIES` to 8
+- Increase `INITIAL_RETRY_DELAY` to 2000
+
+**For large organizations (100+ accounts):**
+- Keep `CONCURRENCY_LIMIT` at 10 (safer)
+- Increase `MAX_RETRIES` to 10
+
+## Output Format
+
+CSV format with these columns:
+
+```
+Account Number, Account Name, Username, Permission Set, Group
+```
+
+Example:
+
+```
+123456789012, Production Account, john.doe, AdministratorAccess,
+123456789012, Production Account, jane.smith, ReadOnlyAccess,
+234567890123, Staging Account, john.doe, DeveloperAccess, Developers
+234567890123, Staging Account, bob.jones, DeveloperAccess, Developers
+```
+
+Notes:
+- The Group column shows the group name if the user received access through group membership (empty for direct assignments)
+- Deleted users/groups appear as `[Deleted User: <id>]` or `[Deleted Group: <id>]`
+
+## How It Works
+
+### The Caching System
+
+AWS SSO users often have access to multiple accounts. Without caching, we'd query the same user 50 times if they appear in 50 accounts.
+
+**With caching:**
+```
+Processing Account 1:
+  - Need user "abc123"
+  - Check cache: NOT FOUND
+  - Call AWS API → get "john.doe"
+  - Store: userCache["abc123"] = "john.doe"
+  - Time: 150ms
+
+Processing Account 2:
+  - Need user "abc123"
+  - Check cache: FOUND → "john.doe"
+  - Return immediately (no API call)
+  - Time: <1ms ⚡
+
+Processing Account 3:
+  - Need user "abc123"
+  - Check cache: FOUND → "john.doe"
+  - Return immediately (no API call)
+  - Time: <1ms ⚡
+```
+
+Result: 150ms instead of 450ms (3x faster!)
+
+### Performance Estimates
+
+For a typical organization with:
+- 50 accounts
+- 10 permission sets per account
+- 20 unique users appearing across accounts
+
+**Without optimizations:**
+- ~15-25 minutes (sequential processing)
+- 1000+ API calls for user lookups
+
+**With optimizations:**
+- ~2-5 minutes (parallel + caching)
+- Only 20 API calls for users (cached thereafter)
+- **5-10x faster**
+
+## Troubleshooting
+
+### "Region is missing" Error
+
+Set your AWS region:
+```bash
+export AWS_REGION=us-west-2
+npm start
+```
+
+Or edit `AWS_REGION` at the top of the script.
+
+### Rate Limit Errors
+
+You'll see warnings like:
+```
+⚠️  Rate limit hit for DescribeUser. Retrying in 3s (attempt 2/5)...
+```
+
+This is normal - the script will automatically retry. If you see many of these:
+- Decrease `CONCURRENCY_LIMIT` to 5
+- The script will run slower but more reliably
+
+### "ResourceNotFoundException" for Groups
+
+Some groups may have been deleted but still have assignments. These are silently handled and marked as `[Deleted Group: <id>]` in the output.
+
+## Contributing
+
+Feel free to modify the script for your needs. Common modifications:
+
+- Filter permission sets by name pattern
+- Output to JSON instead of CSV
+- Add email addresses (requires additional API calls)
+- Export to Excel with formatting
+
+## License
+
+Use freely. No warranty provided.

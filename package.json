@@ -1,0 +1,25 @@
+{
+  "name": "aws-sso-admin-query",
+  "version": "1.0.0",
+  "description": "Query AWS SSO for admin privilege assignments",
+  "main": "query-sso-admin-access.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsx query-sso-admin-access.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-identitystore": "^3.679.0",
+    "@aws-sdk/client-organizations": "^3.679.0",
+    "@aws-sdk/client-sso-admin": "^3.679.0",
+    "cli-progress": "^3.12.0",
+    "chalk": "^4.1.2",
+    "p-limit": "^3.1.0",
+    "log-update": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/cli-progress": "^3.11.6",
+    "@types/node": "^22.8.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}
