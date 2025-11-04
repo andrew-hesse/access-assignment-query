@@ -14,6 +14,36 @@ This tool builds a complete access inventory for your AWS Organization. It:
 - Expands group memberships to show individual user access
 - Generates a CSV file with the complete access assignment matrix
 
+## Output Format
+
+The tool generates a CSV file with a complete access assignment list containing these columns:
+
+```
+Account Number, Account Name, Username, Permission Set, Group
+```
+
+Example output:
+
+```
+123456789012, Production Account, john.doe, AdministratorAccess,
+123456789012, Production Account, jane.smith, ReadOnlyAccess,
+234567890123, Staging Account, john.doe, DeveloperAccess, Developers
+234567890123, Staging Account, bob.jones, DeveloperAccess, Developers
+```
+
+**Column Descriptions:**
+- **Account Number**: AWS account ID
+- **Account Name**: Human-readable account name from AWS Organizations
+- **Username**: Individual user's SSO username
+- **Permission Set**: The permission set (role) assigned
+- **Group**: Group name if access was granted via group membership (empty for direct user assignments)
+
+**Notes:**
+- Each row represents one user's access to one permission set in one account
+- Group-based assignments are expanded to show individual users
+- Deleted users/groups appear as `[Deleted User: <id>]` or `[Deleted Group: <id>]`
+
+
 ## Features
 
 ### Performance Optimizations
@@ -120,35 +150,6 @@ const OUTPUT_FILE = "sso-assignments.csv"
 **For large organizations (100+ accounts):**
 - Keep `CONCURRENCY_LIMIT` at 10 (safer)
 - Increase `MAX_RETRIES` to 10
-
-## Output Format
-
-The tool generates a CSV file with a complete access assignment list containing these columns:
-
-```
-Account Number, Account Name, Username, Permission Set, Group
-```
-
-Example output:
-
-```
-123456789012, Production Account, john.doe, AdministratorAccess,
-123456789012, Production Account, jane.smith, ReadOnlyAccess,
-234567890123, Staging Account, john.doe, DeveloperAccess, Developers
-234567890123, Staging Account, bob.jones, DeveloperAccess, Developers
-```
-
-**Column Descriptions:**
-- **Account Number**: AWS account ID
-- **Account Name**: Human-readable account name from AWS Organizations
-- **Username**: Individual user's SSO username
-- **Permission Set**: The permission set (role) assigned
-- **Group**: Group name if access was granted via group membership (empty for direct user assignments)
-
-**Notes:**
-- Each row represents one user's access to one permission set in one account
-- Group-based assignments are expanded to show individual users
-- Deleted users/groups appear as `[Deleted User: <id>]` or `[Deleted Group: <id>]`
 
 ## How It Works
 
